@@ -101,11 +101,4 @@ for i = 1:size(timeIndices,2)
 end
 
 figure 
-plot(timeIndices,pos_estimation_error,"LineStyle","--","Marker","+","MarkerSize",5,'DisplayName','Estimation Error');
-hold on
-plot(timeIndices,pos_prediction_error,"LineStyle","--","Marker","+","MarkerSize",5,'DisplayName','Prediction Error');
-title("Estimation and Prediction Errors vs. Time");
-ylabel("Error");
-xlabel("Time (s)");
-legend("show");
-grid on;
+plot(timeIndices,pos_estimation_error,"LineStyle","--")
