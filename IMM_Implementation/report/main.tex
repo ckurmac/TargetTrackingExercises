@@ -1,0 +1,219 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{fancyhdr}
+\usepackage{amsmath}
+\usepackage{float}
+
+
+
+\begin{document}
+\pagestyle{fancy}
+\fancyhead[RO]{Mehmet Çağatay Kurmaç}
+\fancyhead[LO]{Target Tracking Exercise 3}
+
+\section*{a)}
+
+    The true trajectory of the target is shown in Figure \ref{fig:1a}. 
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/true_traj.png}
+        \caption{The plot of the true trajectory.}
+        \label{fig:1a}
+    \end{figure}
+
+\section*{b)}
+
+    The noisy measurements of the target are shown in Figure \ref{fig:1b}.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/noisy_meas.png}
+        \caption{The plot of the target and the measurements.}
+        \label{fig:1b}
+    \end{figure}
+
+\section*{c)}
+
+    For Q1, the estimated trajectory with gates are given in Figure \ref{fig:1c}. The estimation errors with respect to time are given
+    in Figure \ref{fig:1d}. The gate sizes are given in Figure \ref{fig:1e}.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/q1_traj.png}
+        \caption{The plot of the target, measurements, state estimates and gates for Q1.}
+        \label{fig:1c}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/q1_est_err.png}
+        \caption{The plot of the estimation errors with respect to time for Q1.}
+        \label{fig:1d}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/q1_gate_size.png}
+        \caption{The plot of the gate sizes with respect to time for Q1.}
+        \label{fig:1e}
+    \end{figure}
+
+    For Q2, the estimated trajectory with gates are given in Figure \ref{fig:1f}. The estimation errors with respect to time are given
+    in Figure \ref{fig:1g}. The gate sizes are given in Figure \ref{fig:1h}.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/q2_traj.png}
+        \caption{The plot of the target, measurements, state estimates and gates for Q2.}
+        \label{fig:1f}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/q2_est_err.png}
+        \caption{The plot of the estimation errors with respect to time for Q2.}
+        \label{fig:1g}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/q2_gate_size.png}
+        \caption{The plot of the gate sizes with respect to time for Q2.}
+        \label{fig:1h}
+    \end{figure}
+
+        For Q3, the estimated trajectory with gates are given in Figure \ref{fig:1i}. The estimation errors with respect to time are given
+    in Figure \ref{fig:1j}. The gate sizes are given in Figure \ref{fig:1k}.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/q3_traj.png}
+        \caption{The plot of the target, measurements, state estimates and gates for Q3.}
+        \label{fig:1i}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/q3_est_err.png}
+        \caption{The plot of the estimation errors with respect to time for Q3.}
+        \label{fig:1j}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/q3_gate_size.png}
+        \caption{The plot of the gate sizes with respect to time for Q3.}
+        \label{fig:1k}
+    \end{figure}
+
+\section*{d)}
+
+    The IMM Filter for given transition probability matrices are implemented with CV Kalman Filters given for Q1 and Q3. The resulting
+    estimated trajectories with gates, true trajectory and measurements are given in Figure \ref{fig:1l}. The estimation errors with respect 
+    to time are given in Figure \ref{fig:1m}. The gate sizes are given in Figure \ref{fig:1n}. The model probabilities with respect to time
+    are given in Figure \ref{fig:1o}.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/d_imm_traj.png}
+        \caption{The plot of the target, measurements, state estimates and gates for IMM Filter.}
+        \label{fig:1l}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/d_imm_est_err.png}
+        \caption{The plot of the estimation errors with respect to time for IMM Filter.}
+        \label{fig:1m}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/d_imm_gate_size.png}
+        \caption{The plot of the gate sizes with respect to time for IMM Filter.}
+        \label{fig:1n}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/d_imm_model_prob.png}
+        \caption{The plot of the model probabilities with respect to time for IMM Filter.}
+        \label{fig:1o}
+    \end{figure}
+
+\section*{e)}
+
+    Two IMM filters with the altered transition probability matrices are implemented.
+
+    For TPM 1 (0.999,0.001), the resulting estimated trajectories with gates, true trajectory and measurements are given in Figure \ref{fig:1p}. The estimation errors with respect 
+    to time are given in Figure \ref{fig:1q}. The gate sizes are given in Figure \ref{fig:1r}. The model probabilities with respect to time
+    are given in Figure \ref{fig:1s}.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/e_imm_1_traj.png}
+        \caption{The plot of the target, measurements, state estimates and gates for IMM Filter with TPM 1.}
+        \label{fig:1p}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/e_imm_1_est_err.png}
+        \caption{The plot of the estimation errors with respect to time for IMM Filter with TPM 1.}
+        \label{fig:1q}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/e_imm_1_gate_size.png}
+        \caption{The plot of the gate sizes with respect to time for IMM Filter with TPM 1.}
+        \label{fig:1r}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/e_imm_1_model_prob.png}
+        \caption{The plot of the model probabilities with respect to time for IMM Filter with TPM 1.}
+        \label{fig:1s}
+    \end{figure}
+        
+    For TPM 2 (0.5,0.5), the resulting estimated trajectories with gates, true trajectory and measurements are given in Figure \ref{fig:1t}. The estimation errors with respect 
+    to time are given in Figure \ref{fig:1u}. The gate sizes are given in Figure \ref{fig:1v}. The model probabilities with respect to time
+    are given in Figure \ref{fig:1w}.
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/e_imm_2_traj.png}
+        \caption{The plot of the target, measurements, state estimates and gates for IMM Filter with TPM 2.}
+        \label{fig:1t}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/e_imm_2_est_err.png}
+        \caption{The plot of the estimation errors with respect to time for IMM Filter with TPM 2.}
+        \label{fig:1u}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/e_imm_2_gate_size.png}
+        \caption{The plot of the gate sizes with respect to time for IMM Filter with TPM 2.}
+        \label{fig:1v}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{figures/e_imm_2_model_prob.png}
+        \caption{The plot of the model probabilities with respect to time for IMM Filter with TPM 2.}
+        \label{fig:1w}
+    \end{figure}
+
+    As we can see from the results, If the transition probabilities are set to be more certain (TPM 1), the IMM filter performs better
+    in terms of estimation error and gate sizes adapt to the altering dynamics as expected. On the other hand, if the transition probabilities
+    are set to be more uncertain (TPM 2), the IMM filter performs worse in terms of estimation error and gate sizes do not adapt at all. The
+    model probabilities change trivially and adaptation cannot be observed.
+
+    This is expected because when we are calculating the estimates, the models act as hypotheses. If the transitions are allowed to be made 
+    loosely, the hypothesis aspect becomes trivial and representation ability perishes.
+\end{document}
