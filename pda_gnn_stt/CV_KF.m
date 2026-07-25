@@ -21,13 +21,10 @@ classdef CV_KF < handle
 
             x_predict = A_k*obj.x;
             xP_predict = A_k*obj.xP*A_k' + B_k*obj.Q*B_k';
-            obj.x = x_predict;
-            obj.xP = xP_predict;
         end
 
-        function [x_update,xP_update] = update(obj,y_k,R_k)
-            % this function assumes that the state prediction is called
-            % beforehand. 
+        function [x_update,xP_update] = update(obj,y_k,R_k,t_y)
+            [obj.x,obj.xP] = obj.predict(t_y);
             S_k = obj.C*obj.xP*obj.C'+R_k;
             K_k = obj.xP*obj.C'*S_k^-1;
             x_update = obj.x+K_k*(y_k-obj.C*obj.x);
@@ -35,14 +32,6 @@ classdef CV_KF < handle
             obj.x = x_update;
             obj.xP = xP_update;
         end
-
-
-        function setState(obj,new_state)
-            obj.x = new_state;
-        end
-
-        function setStateCovariance(obj,new_state_cov)
-            obj.xP = new_state_cov;
-        end
+        
     end
 end
