@@ -16,10 +16,8 @@ classdef BaseTracker < handle
     methods
         function obj = BaseTracker(maxTrackNum,confM,confN,delM,delN)
             obj.TracksList = cell(maxTrackNum,1);
-            sampleKF = CV_KF(eye(2,2),zeros(4,1),eye(4,4)); % state dim is 4 in this problem.
-            sampleTrack = TrackObj(0,sampleKF);
             for i = 1:maxTrackNum
-                obj.TracksList{i,1} = sampleTrack;
+                obj.TracksList{i,1} = TrackObj(0, CV_KF(eye(2,2), zeros(4,1), eye(4,4)));
             end
             obj.TrackNum = 0;
             obj.LastTrackID = 0;
@@ -47,6 +45,7 @@ classdef BaseTracker < handle
                     obj.TracksList{i}.UpdateTime = detection.MeasurementTime;
                     obj.TrackNum = obj.TrackNum+1;
                     obj.liveTrackIDs(obj.TrackNum) = obj.LastTrackID;
+                    break;
                 end
             end
         end
@@ -84,22 +83,28 @@ classdef BaseTracker < handle
             else
                 obj.TracksList{trackIdx}.markMiss;
             end
+            
             trackAge = obj.TracksList{trackIdx}.InitiationState(4);
             missCount = obj.TracksList{trackIdx}.InitiationState(3);
             hitCount = obj.TracksList{trackIdx}.InitiationState(2);
-            
-            if(trackAge<=obj.delN)
-                if(missCount>0)
-                    obj.TracksList{trackIdx}.InitiationState(1) = 0; % deleted. Will do the removal after.
+            currStatus = obj.TracksList{trackIdx}.InitiationState(1);
+            if(currStatus==2)
+                if(sum(obj.TracksList{trackIdx}.trackHistoryBuffer) == 0)
+                    obj.TracksList{trackIdx}.InitiationState(1) = 0; % delete if missed 3 consecutive.
                 end
             else
-                if(missCount>(obj.confN-obj.confM))
-                    obj.TracksList{trackIdx}.InitiationState(1) = 0; % deleted. Will do the removal after.
-                elseif(hitCount>obj.delM+obj.confM)
-                    obj.TracksList{trackIdx}.InitiationState(1) = 2; % confirmed
+                if(trackAge<=obj.delN)
+                    if(missCount>0)
+                        obj.TracksList{trackIdx}.InitiationState(1) = 0; % deleted. Will do the removal after.
+                    end
+                else
+                    if(missCount>(obj.confN-obj.confM))
+                        obj.TracksList{trackIdx}.InitiationState(1) = 0; % deleted. Will do the removal after.
+                    elseif(hitCount>obj.delM+obj.confM)
+                        obj.TracksList{trackIdx}.InitiationState(1) = 2; % confirmed
+                    end
                 end
             end
-
         end
 
         function trackIdx = getTrackIndex(obj,trackID)

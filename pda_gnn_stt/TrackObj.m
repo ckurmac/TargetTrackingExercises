@@ -5,6 +5,7 @@ classdef TrackObj < handle
         Filter
         InitiationState
         UpdateTime
+        trackHistoryBuffer % operate as a shift register for confirmed tracks.
     end
 
     methods
@@ -12,6 +13,7 @@ classdef TrackObj < handle
             obj.TrackID = ID;
             obj.Filter = filter;
             obj.InitiationState = [1,1,0,1]; % [state,hit_count,miss_count,age]
+            obj.trackHistoryBuffer = ones(1,3);
         end
 
         function updateNN(obj, detection)
@@ -70,13 +72,27 @@ classdef TrackObj < handle
         end
 
         function markMiss(obj)
-            obj.InitiationState(3) = obj.InitiationState(3)+1;
-            obj.InitiationState(4) = obj.InitiationState(4)+1;
+            if(obj.InitiationState(1) == 2)
+                for i = 1:length(obj.trackHistoryBuffer)-1
+                    obj.trackHistoryBuffer(i+1) = obj.trackHistoryBuffer(i+1);
+                end
+                obj.trackHistoryBuffer(1) = 0;
+            else
+                obj.InitiationState(3) = obj.InitiationState(3)+1;
+                obj.InitiationState(4) = obj.InitiationState(4)+1;
+            end
         end
         
         function markHit(obj)
-            obj.InitiationState(2) = obj.InitiationState(2)+1;
-            obj.InitiationState(4) = obj.InitiationState(4)+1;
+            if(obj.InitiationState(1) == 2)
+                for i = 1:length(obj.trackHistoryBuffer)-1
+                    obj.trackHistoryBuffer(i+1) = obj.trackHistoryBuffer(i+1);
+                end
+                obj.trackHistoryBuffer(1) = 1;
+            else
+                obj.InitiationState(2) = obj.InitiationState(2)+1;
+                obj.InitiationState(4) = obj.InitiationState(4)+1;
+            end
         end
     end
 end
