@@ -24,7 +24,7 @@ trueTraj = GenerateCVData(x_0,duration,sigma_noise,T);
 % Generate Clutter
 
 
-beta_fa = 1e-7;
+beta_fa = 1e-6;
 V = 10000*10000; % 10 km^2
 clutter_sets = cell(200,1);
 for i = 1:200 % not generic for different periods. Will handle later .
@@ -68,6 +68,7 @@ for i = 1:200 % full length of the scenario, not generic for different periods. 
     detSet = measurement_sets{i};
     isDetAssigned = zeros(1,size(detSet,1));
     trackIDsAtBeginning = tracker.liveTrackIDs; % to keep the order correct.
+    stopAfterFrame = false;
     for j = 1:tracker.TrackNum
         currTrackID = trackIDsAtBeginning(j); 
         currTrackIdx = tracker.getTrackIndex(currTrackID);
@@ -99,6 +100,7 @@ for i = 1:200 % full length of the scenario, not generic for different periods. 
             if(tracker.TracksList{currTrackIdx}.InitiationState(1) == 2) %is Confirmed
                 fprintf("Track %d is confirmed. Track initiation achieved at Time %d s.\n",currTrackID,i);
                 isInitiated = true;
+                stopAfterFrame = true;
                 break;
             end
         else % unassigned track/initiator
@@ -108,18 +110,22 @@ for i = 1:200 % full length of the scenario, not generic for different periods. 
             end
         end
     end
+
+    if ~stopAfterFrame
+        for j = 1:size(detSet,1)
+            if(isDetAssigned(j))
+                continue;
+            else % initiate tracks with unassigned dets.
+                detObj.Measurement = detSet(j,:)';
+                detObj.MeasurementCovariance = meas_cov;
+                detObj.MeasurementTime = i;
+                tracker.initiateTrack(detObj,posSig,velSig);
+            end
+        end
+    end
+
     if(isInitiated)
         break;
-    end
-    for j = 1:size(detSet,1)
-        if(isDetAssigned(j))
-            continue;
-        else % initiate tracks with unassigned dets.
-            detObj.Measurement = detSet(j,:)';
-            detObj.MeasurementCovariance = meas_cov;
-            detObj.MeasurementTime = i;
-            tracker.initiateTrack(detObj,posSig,velSig);
-        end
     end
 end
 %% 
@@ -135,16 +141,24 @@ meas_cov = [meas_noise_std^2,0;...
 posSig = 50; % V*T
 velSig = 50; % V
 
+nnTrackHistory = struct('TrackID', {}, 'x', {}, 'y', {}, 'status', {}, 'cov', {}, 'gateCenter', {}, 'gateCov', {}, 'active', {});
+nnDeletionEvents = struct('TrackID', {}, 'x', {}, 'y', {}, 'time', {});
+nnFigure = figure('Name', 'NN Tracker Visualization', 'Color', 'w');
+
 for i = 1:200 % full length of the scenario, not generic for different periods. Will handle later .
     detSet = measurement_sets{i};
     isDetAssigned = zeros(1,size(detSet,1));
     trackIDsAtBeginning = tracker.liveTrackIDs; % to keep the order correct.
+    gateCenters = cell(1, tracker.TrackNum);
+    gateCovs = cell(1, tracker.TrackNum);
     for j = 1:tracker.TrackNum
         currTrackID = trackIDsAtBeginning(j); 
         currTrackIdx = tracker.getTrackIndex(currTrackID);
         if(currTrackIdx == 0)
             fprintf("already deleted track\n");
         end
+        currTrack = tracker.TracksList{currTrackIdx};
+        [gateCenters{j}, gateCovs{j}] = currTrack.getGateInfo(meas_cov, i);
         minDist = inf;
         minDistDetIdx = 0;
         minDistDet = getDetectionStruct;
@@ -156,7 +170,7 @@ for i = 1:200 % full length of the scenario, not generic for different periods. 
             detObj.Measurement = detSet(k,:)';
             detObj.MeasurementCovariance = meas_cov;
             detObj.MeasurementTime = i;
-            dist = tracker.TracksList{currTrackIdx}.distance(detObj);
+            dist = currTrack.distance(detObj);
             if(dist<=gate_threshold)
                 minDist = dist;
                 minDistDetIdx = k;
@@ -170,6 +184,13 @@ for i = 1:200 % full length of the scenario, not generic for different periods. 
         else % unassigned track/initiator
             tracker.checkTrackStatus(currTrackID,false);
             if(tracker.TracksList{currTrackIdx}.InitiationState(1) == 0) %deletedTrack.
+                if(tracker.TracksList{currTrackIdx}.InitiationState(4) >= 4)
+                    nnDeletionEvents(end+1) = struct( ...
+                        'TrackID', currTrackID, ...
+                        'x', tracker.TracksList{currTrackIdx}.Filter.x(1), ...
+                        'y', tracker.TracksList{currTrackIdx}.Filter.x(2), ...
+                        'time', i); %#ok<AGROW>
+                end
                 tracker.removeTrack(currTrackID);
             end
         end
@@ -184,6 +205,9 @@ for i = 1:200 % full length of the scenario, not generic for different periods. 
             tracker.initiateTrack(detObj,posSig,velSig);
         end
     end
+
+    nnTrackHistory = updateTrackHistory(nnTrackHistory, tracker, i, gateCenters, gateCovs);
+    renderTrackerVisualization(nnFigure, 'NN Tracker Visualization', trueTraj, measurement_sets, i, tracker, nnTrackHistory, gate_threshold, meas_cov, nnDeletionEvents);
 end
 
 
@@ -199,16 +223,24 @@ meas_cov = [meas_noise_std^2,0;...
 posSig = 50; % V*T
 velSig = 50; % V
 
+pdaTrackHistory = struct('TrackID', {}, 'x', {}, 'y', {}, 'status', {}, 'cov', {}, 'gateCenter', {}, 'gateCov', {}, 'active', {});
+pdaDeletionEvents = struct('TrackID', {}, 'x', {}, 'y', {}, 'time', {});
+pdaFigure = figure('Name', 'PDA Tracker Visualization', 'Color', 'w');
+
 for i = 1:200 % full length of the scenario, not generic for different periods. Will handle later .
     detSet = measurement_sets{i};
     isDetAssigned = zeros(1,size(detSet,1));
     trackIDsAtBeginning = tracker.liveTrackIDs; % to keep the order correct.
+    gateCenters = cell(1, tracker.TrackNum);
+    gateCovs = cell(1, tracker.TrackNum);
     for j = 1:tracker.TrackNum
         currTrackID = trackIDsAtBeginning(j); 
         currTrackIdx = tracker.getTrackIndex(currTrackID);
         if(currTrackIdx == 0)
             fprintf("already deleted track\n");
         end
+        currTrack = tracker.TracksList{currTrackIdx};
+        [gateCenters{j}, gateCovs{j}] = currTrack.getGateInfo(meas_cov, i);
         sampleDet = getDetectionStruct;
         associatedDets = repmat(sampleDet,0,1);
         detIdx = 0;
@@ -220,7 +252,7 @@ for i = 1:200 % full length of the scenario, not generic for different periods. 
             detObj.Measurement = detSet(k,:)';
             detObj.MeasurementCovariance = meas_cov;
             detObj.MeasurementTime = i;
-            dist = tracker.TracksList{currTrackIdx}.distance(detObj);
+            dist = currTrack.distance(detObj);
             if(dist<=gate_threshold)
                 detIdx = detIdx+1;
                 associatedDets(detIdx)=detObj;
@@ -236,6 +268,13 @@ for i = 1:200 % full length of the scenario, not generic for different periods. 
         else % unassigned track/initiator
             tracker.checkTrackStatus(currTrackID,false);
             if(tracker.TracksList{currTrackIdx}.InitiationState(1) == 0) %deletedTrack.
+                if(tracker.TracksList{currTrackIdx}.InitiationState(4) >= 4)
+                    pdaDeletionEvents(end+1) = struct( ...
+                        'TrackID', currTrackID, ...
+                        'x', tracker.TracksList{currTrackIdx}.Filter.x(1), ...
+                        'y', tracker.TracksList{currTrackIdx}.Filter.x(2), ...
+                        'time', i); %#ok<AGROW>
+                end
                 tracker.removeTrack(currTrackID);
             end
         end
@@ -250,4 +289,7 @@ for i = 1:200 % full length of the scenario, not generic for different periods. 
             tracker.initiateTrack(detObj,posSig,velSig);
         end
     end
+
+    pdaTrackHistory = updateTrackHistory(pdaTrackHistory, tracker, i, gateCenters, gateCovs);
+    renderTrackerVisualization(pdaFigure, 'PDA Tracker Visualization', trueTraj, measurement_sets, i, tracker, pdaTrackHistory, gate_threshold, meas_cov, pdaDeletionEvents);
 end

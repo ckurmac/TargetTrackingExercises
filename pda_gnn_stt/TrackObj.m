@@ -61,21 +61,23 @@ classdef TrackObj < handle
             obj.Filter.xP = corrected_stateCov;
             obj.UpdateTime = currTime;
         end
+
+        function [gateCenter, gateCov] = getGateInfo(obj, measurementCovariance, currTime)
+            dt = currTime - obj.UpdateTime;
+            [predicted_state, predicted_state_cov] = obj.Filter.predict(dt);
+            gateCenter = obj.Filter.C * predicted_state;
+            gateCov = obj.Filter.C * predicted_state_cov * obj.Filter.C' + measurementCovariance;
+        end
         
         function dist = distance(obj,detection)
-            dt = detection.MeasurementTime - obj.UpdateTime;
-            [predicted_state,predicted_state_cov] = obj.Filter.predict(dt);
-            predicted_meas = obj.Filter.C*predicted_state;
+            [predicted_meas, S_k] = obj.getGateInfo(detection.MeasurementCovariance, detection.MeasurementTime);
             dz = detection.Measurement - predicted_meas;
-            S_k = obj.Filter.C * predicted_state_cov * obj.Filter.C' + detection.MeasurementCovariance;
-            dist = dz'* S_k^-1*dz;
+            dist = dz' * S_k^-1 * dz;
         end
 
         function markMiss(obj)
             if(obj.InitiationState(1) == 2)
-                for i = 1:length(obj.trackHistoryBuffer)-1
-                    obj.trackHistoryBuffer(i+1) = obj.trackHistoryBuffer(i+1);
-                end
+                obj.trackHistoryBuffer(2:end) = obj.trackHistoryBuffer(1:end-1);
                 obj.trackHistoryBuffer(1) = 0;
             else
                 obj.InitiationState(3) = obj.InitiationState(3)+1;
@@ -85,9 +87,7 @@ classdef TrackObj < handle
         
         function markHit(obj)
             if(obj.InitiationState(1) == 2)
-                for i = 1:length(obj.trackHistoryBuffer)-1
-                    obj.trackHistoryBuffer(i+1) = obj.trackHistoryBuffer(i+1);
-                end
+                obj.trackHistoryBuffer(2:end) = obj.trackHistoryBuffer(1:end-1);
                 obj.trackHistoryBuffer(1) = 1;
             else
                 obj.InitiationState(2) = obj.InitiationState(2)+1;
