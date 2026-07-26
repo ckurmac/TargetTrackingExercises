@@ -17,6 +17,47 @@ classdef TrackObj < handle
         function updateNN(obj, detection)
             dt = detection.MeasurementTime - obj.UpdateTime;
             obj.Filter.update(detection.Measurement,detection.MeasurementCovariance,dt);
+            obj.UpdateTime = detection.MeasurementTime;
+        end
+
+        function updatePDA(obj,dets,PD,PG,BFA,currTime)
+
+            weights = zeros(1,length(dets)+1);
+            weights(1) = (1-PD*PG)*BFA; % u_0;
+            states = cell(1,length(dets));
+            stateCovariances = cell(1,length(dets));
+
+            dt = currTime - obj.UpdateTime;
+            [predicted_state,predicted_stateCov] = obj.Filter.predict(dt);
+
+            for i = 1:length(dets)
+                currDet = dets(i);
+
+                S_k = obj.Filter.C*predicted_stateCov*obj.Filter.C' + currDet.MeasurementCovariance;
+                predicted_meas = obj.Filter.C*predicted_state;
+                weights(i+1) = PD*mvnpdf(currDet.Measurement,predicted_meas,S_k);
+                K_k = predicted_stateCov * obj.Filter.C' / S_k;
+                states{i} = predicted_state + K_k*(currDet.Measurement-predicted_meas);
+                stateCovariances{i} = predicted_stateCov - K_k*S_k*K_k';
+            end
+            weights = weights./sum(weights);
+            corrected_state = zeros(4,1);
+            corrected_state = corrected_state + weights(1)*predicted_state; 
+            corrected_stateCov = zeros(4,4);
+            for i = 1:length(dets)
+                corrected_state = corrected_state + weights(i+1)*states{i};
+            end
+
+            corrected_stateCov = corrected_stateCov + weights(1)*(predicted_stateCov + ...
+                                (predicted_state-corrected_state)*(predicted_state-corrected_state)');
+            for i = 1:length(dets)
+                corrected_stateCov = corrected_stateCov + weights(i+1)*(stateCovariances{i} + ...
+                                (states{i}-corrected_state)*(states{i}-corrected_state)');
+            end
+
+            obj.Filter.x = corrected_state;
+            obj.Filter.xP = corrected_stateCov;
+            obj.UpdateTime = currTime;
         end
         
         function dist = distance(obj,detection)
