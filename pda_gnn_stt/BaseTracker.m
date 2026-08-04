@@ -11,10 +11,13 @@ classdef BaseTracker < handle
         delN
         confirmedTrackNum
         liveTrackIDs
+        gateThreshold
+        posSig
+        velSig
     end
 
     methods
-        function obj = BaseTracker(maxTrackNum,confM,confN,delM,delN)
+        function obj = BaseTracker(maxTrackNum,confM,confN,delM,delN,gateThreshold,posSig,velSig)
             obj.TracksList = cell(maxTrackNum,1);
             for i = 1:maxTrackNum
                 obj.TracksList{i,1} = TrackObj(0, CV_KF(eye(2,2), zeros(4,1), eye(4,4)));
@@ -28,6 +31,9 @@ classdef BaseTracker < handle
             obj.delN = delN;
             obj.confirmedTrackNum = 0;
             obj.liveTrackIDs = zeros(1,maxTrackNum,'uint32');
+            obj.gateThreshold = gateThreshold;
+            obj.posSig = posSig;
+            obj.velSig = velSig;
         end
 
         function  initiateTrack(obj,detection,posSig,velSig)
@@ -110,12 +116,64 @@ classdef BaseTracker < handle
         function trackIdx = getTrackIndex(obj,trackID)
             % hash table would be better, got lazy.
             trackIdx = 0;
-            for i = 1:obj.maxTrackNum 
+            for i = 1:obj.maxTrackNum
                 if(obj.TracksList{i}.TrackID == trackID)
                     trackIdx = i;
                     return
                 end
             end
+        end
+
+        function [initiators, confirmed] = step(obj, detections)
+            % Runs one scan of the tracker: associate+update existing tracks,
+            % confirm/delete status checks, then initiate new tracks from
+            % whatever detections remain unassigned.
+            trackIDsAtBeginning = obj.liveTrackIDs(1:obj.TrackNum); % removeTrack mutates liveTrackIDs mid-loop.
+            isDetAssigned = false(numel(detections),1);
+
+            for j = 1:numel(trackIDsAtBeginning)
+                currTrackID = trackIDsAtBeginning(j);
+                currTrackIdx = obj.getTrackIndex(currTrackID);
+                if(currTrackIdx == 0)
+                    fprintf("already deleted track\n");
+                    continue;
+                end
+                currTrack = obj.TracksList{currTrackIdx};
+                [isHit, isDetAssigned] = obj.associateAndUpdate(currTrack, detections, isDetAssigned);
+                obj.checkTrackStatus(currTrackID, isHit);
+                if(currTrack.InitiationState(1) == 0) %deletedTrack.
+                    obj.removeTrack(currTrackID);
+                end
+            end
+
+            for k = 1:numel(detections)
+                if(~isDetAssigned(k))
+                    obj.initiateTrack(detections(k), obj.posSig, obj.velSig);
+                end
+            end
+
+            [initiators, confirmed] = obj.getLiveTrackLists();
+        end
+
+        function [initiators, confirmed] = getLiveTrackLists(obj)
+            initiators = {};
+            confirmed = {};
+            for j = 1:obj.TrackNum
+                trackIdx = obj.getTrackIndex(obj.liveTrackIDs(j));
+                if(trackIdx == 0)
+                    continue;
+                end
+                currTrack = obj.TracksList{trackIdx};
+                if(currTrack.InitiationState(1) == 1)
+                    initiators{end+1} = currTrack; %#ok<AGROW>
+                elseif(currTrack.InitiationState(1) == 2)
+                    confirmed{end+1} = currTrack; %#ok<AGROW>
+                end
+            end
+        end
+
+        function [isHit, isDetAssigned] = associateAndUpdate(obj, track, detections, isDetAssigned)
+            error("subclass must implement associateAndUpdate");
         end
     end
 end
