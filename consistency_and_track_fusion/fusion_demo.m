@@ -1,5 +1,5 @@
-% 1. Consistency 
-% a) 
+% 1. Consistency
+% a)
 x_0 = [5000;5000;25;25];
 sigma_noise = 2;
 P_0 = diag(x_0/10.*x_0/10);
@@ -33,7 +33,7 @@ C2 = [1,0,0,0;...
     0,1,0,0];
 C_combined = [C1;C2];
 R_combined = [R1,zeros(2,2);...
-              zeros(2,2),R2];
+    zeros(2,2),R2];
 
 prevState = x_0;
 prevStateCov = P_0;
@@ -41,14 +41,14 @@ prevTime = times(1);
 
 for i = 1:length(trueTraj)
     dt = times(i)-prevTime;
-    
+
     y_k = [S1_measurements(i,:)';...
-           S2_measurements(i,:)'];
+        S2_measurements(i,:)'];
     A_k = getCVStateTransitionMtx(dt);
     B_k = getCVNoiseGainMtx(dt);
     x_predict = A_k*prevState;
     xP_predict = A_k*prevStateCov*A_k' + B_k*processNoise*B_k';
-    
+
     S_k = C_combined*xP_predict*C_combined'+R_combined;
     K_k = xP_predict*C_combined'*S_k^-1;
     state = x_predict + K_k*(y_k-C_combined*x_predict);
@@ -80,10 +80,10 @@ prevTime = times(1);
 
 for i = 1:length(trueTraj)
     dT = times(i)-prevTime;
-    
+
     [state1, stateCov1] = KF_1.update(S1_measurements(i,:)',R1,dT);
     [state2, stateCov2] = KF_2.update(S2_measurements(i,:)',R2,dT);
-    
+
     if(mod(times(i),2)==0)
         inv_SC1 = inv(stateCov1);
         inv_SC2 = inv(stateCov2);
@@ -92,6 +92,8 @@ for i = 1:length(trueTraj)
         xf = Pf*(inv_SC1*state1 + inv_SC2*state2);
         states{i} = xf;
         stateCovariances{i} = Pf;
+        KF_2.x = xf;
+        KF_2.xP = Pf;
     else
         states{i} = state2;
         stateCovariances{i} = stateCov2;
@@ -100,7 +102,7 @@ for i = 1:length(trueTraj)
     prevTime = times(i);
 end
 
-% e) 
+% e)
 
 states = cell(1,100);
 stateCovariances = cell(1,100);
@@ -140,6 +142,8 @@ for i = 1:length(trueTraj)
         xf = Pf*(inv_SC1*state1 + inv_SC2*state2 - inv_prev_pred*fused_x_pred);
         states{i} = xf;
         stateCovariances{i} = Pf;
+        KF_2.x = xf;
+        KF_2.xP = Pf;
         prev_fused_x = xf;
         prev_fused_xP = Pf;
         prev_fused_time = times(i);
@@ -179,7 +183,7 @@ for i = 1:length(trueTraj)
         P2 = T1*stateCov2*T1';
         [U2,~,~] = svd(P2);
         T2 = U2'*T1;
-    
+
         z1 = T2*state1;
         z2 = T2*state2;
         PZ1 = T2*stateCov1*T2';
@@ -195,10 +199,12 @@ for i = 1:length(trueTraj)
                 PZf(j,j) = PZ1(j,j);
             end
         end
-        xf = inv(T2)*zf; 
+        xf = inv(T2)*zf;
         Pf = inv(T2)*PZf*inv(T2)';
         states{i} = xf;
         stateCovariances{i} = Pf;
+        KF_2.x = xf;
+        KF_2.xP = Pf;
     else
         states{i} = state2;
         stateCovariances{i} = stateCov2;
@@ -210,7 +216,7 @@ end
 
 % Centralized monte carlo
 
-Nmc = 100;
+Nmc = 1000;
 NEES = zeros(1,length(times));
 SqrErr = zeros(1,length(times));
 for j = 1:Nmc
@@ -221,7 +227,7 @@ for j = 1:Nmc
         S2_measurements(i,1) = trueTraj(i,1) + S2_sigma_meas*randn;
         S2_measurements(i,2) = trueTraj(i,2) + S2_sigma_meas*randn;
     end
-    
+
     prevState = x_0;
     prevStateCov = P_0;
     prevTime = times(1);
@@ -280,7 +286,7 @@ title("Position RMSE of Centralized Fusion");
 
 % Naive Fusion Monte-Carlo
 
-Nmc = 100;
+Nmc = 1000;
 NEES = zeros(1,length(times));
 SqrErr = zeros(1,length(times));
 for j = 1:Nmc
@@ -296,13 +302,13 @@ for j = 1:Nmc
 
     KF_1 = CV_KF(processNoise,x_0,P_0);
     KF_2 = CV_KF(processNoise,x_0,P_0);
-    
+
     for i = 1:length(trueTraj)
         dT = times(i)-prevTime;
-        
+
         [state1, stateCov1] = KF_1.update(S1_measurements(i,:)',R1,dT);
         [state2, stateCov2] = KF_2.update(S2_measurements(i,:)',R2,dT);
-        
+
         if(mod(times(i),2)==0)
             inv_SC1 = inv(stateCov1);
             inv_SC2 = inv(stateCov2);
@@ -311,11 +317,13 @@ for j = 1:Nmc
             xf = Pf*(inv_SC1*state1 + inv_SC2*state2);
             states{i} = xf;
             stateCovariances{i} = Pf;
+            KF_2.x = xf;
+            KF_2.xP = Pf;
         else
             states{i} = state2;
             stateCovariances{i} = stateCov2;
         end
-    
+
         prevTime = times(i);
     end
 
@@ -351,7 +359,7 @@ title("Position RMSE of Naive Fusion");
 % Channel Filter Monte-Carlo
 
 
-Nmc = 100;
+Nmc = 1000;
 NEES = zeros(1,length(times));
 SqrErr = zeros(1,length(times));
 for j = 1:Nmc
@@ -393,6 +401,8 @@ for j = 1:Nmc
             xf = Pf*(inv_SC1*state1 + inv_SC2*state2 - inv_prev_pred*fused_x_pred);
             states{i} = xf;
             stateCovariances{i} = Pf;
+            KF_2.x = xf;
+            KF_2.xP = Pf;
             prev_fused_x = xf;
             prev_fused_xP = Pf;
             prev_fused_time = times(i);
@@ -435,7 +445,7 @@ title("Position RMSE of Channel Filter Fusion");
 
 % LEA Monte Carlo
 
-Nmc = 100;
+Nmc = 1000;
 NEES = zeros(1,length(times));
 SqrErr = zeros(1,length(times));
 for j = 1:Nmc
@@ -453,9 +463,6 @@ for j = 1:Nmc
 
     prevTime = times(1);
 
-    prev_fused_x = x_0;
-    prev_fused_xP = P_0;
-    prev_fused_time = times(1);
 
     for i = 1:length(trueTraj)
         dT = times(i)-prevTime;
@@ -464,25 +471,40 @@ for j = 1:Nmc
         [state2, stateCov2] = KF_2.update(S2_measurements(i,:)',R2,dT);
 
         if(mod(times(i),2)==0)
-            dt_fuse = times(i) - prev_fused_time;
-            A_k = getCVStateTransitionMtx(dt_fuse);
-            B_k = getCVNoiseGainMtx(dt_fuse);
-            fused_x_pred = A_k*prev_fused_x;
-            fused_xP_pred = A_k*prev_fused_xP*A_k' + B_k*processNoise*B_k';
-            inv_SC1 = inv(stateCov1);
-            inv_SC2 = inv(stateCov2);
-            inv_prev_pred = inv(fused_xP_pred);
-            inv_Pf =  inv_SC1 + inv_SC2 - inv_prev_pred;
-            Pf = inv(inv_Pf);
-            xf = Pf*(inv_SC1*state1 + inv_SC2*state2 - inv_prev_pred*fused_x_pred);
+            [U1,S1,~] = svd(stateCov1);
+            T1 = S1^(-0.5)*U1';
+            P2 = T1*stateCov2*T1';
+            [U2,~,~] = svd(P2);
+            T2 = U2'*T1;
+
+            z1 = T2*state1;
+            z2 = T2*state2;
+            PZ1 = T2*stateCov1*T2';
+            PZ2 = T2*stateCov2*T2';
+            zf = 0*x_0;
+            PZf = 0*P_0;
+            for j = 1:length(x_0)
+                if(PZ2(j,j)<1)
+                    zf(j) = z2(j);
+                    PZf(j,j) = PZ2(j,j);
+                else
+                    zf(j) = z1(j);
+                    PZf(j,j) = PZ1(j,j);
+                end
+            end
+            xf = inv(T2)*zf;
+            Pf = inv(T2)*PZf*inv(T2)';
             states{i} = xf;
             stateCovariances{i} = Pf;
+            KF_2.x = xf;
+            KF_2.xP = Pf;
         else
             states{i} = state2;
             stateCovariances{i} = stateCov2;
         end
         prevTime = times(i);
     end
+
 
     NEES = NEES + calcNEES(states,stateCovariances,trueTraj);
     SqrErr = SqrErr + calcSqrErr(states,trueTraj);
