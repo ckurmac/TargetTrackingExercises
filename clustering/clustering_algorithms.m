@@ -156,12 +156,12 @@ prevVarLowBound= 0;
 % Conjugate prior parameters
 
 % Dirichlet
-alpha_0 = 0.005;
+alpha_0 = 0.001;
 alpha = ones(1,K)*alpha_0;
 pi_k = ones(1,K)*1/K;
 
 % Gauss-Wishart
-gw_m_0 = mean(x,2);
+gw_m_0 = zeros(2,1);
 gw_weights = cell(1,K);
 nu_0 = D;
 gw_weight_0 = eye(D,D)/nu_0;
@@ -179,6 +179,7 @@ isCompActive = true(1,K);
 while iter<=maxIter
     % E step, calculate E[znk].
     for i = 1:N
+        ln_rho_row = -inf(1,K); % inactive components keep -inf -> zero responsibility
         for j = 1:K
             if(~isCompActive(j))
                 continue;
@@ -190,9 +191,12 @@ while iter<=maxIter
             end
             E_ln_pi_k = psi(alpha(j))-psi(sum(alpha));
             ln_rho = E_ln_pi_k + 0.5*E_ln_lambda - 0.5*D*log(2*pi) - 0.5*E_u_lambda;
-            responsibilities(i,j) = exp(ln_rho); % Later on, will be normalized per model.
+            ln_rho_row(j) = ln_rho;
         end
-        responsibilities(i,:) = responsibilities(i,:)./sum(responsibilities(i,:)); 
+        % Log-sum-exp normalization: small alpha_0 makes psi(alpha_0) very negative,
+        % so exp(ln_rho) underflows to 0 for every component -> 0/0 = NaN.
+        ln_rho_row = ln_rho_row - max(ln_rho_row);
+        responsibilities(i,:) = exp(ln_rho_row)./sum(exp(ln_rho_row));
     end
     % M step
     varLowBound= 0;
