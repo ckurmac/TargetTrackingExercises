@@ -1,4 +1,4 @@
-function plotVI(responsibilities, x, means, covariances, pi_k)
+function plotVI(responsibilities, x, means, covariances, pi_k,isActive)
 %PLOTVI Visualize a Bayesian Gaussian mixture fitted with variational inference.
 %   responsibilities : N-by-K soft assignments E[z_nk] (rows sum to 1)
 %   x                : 2-by-N data points
@@ -31,11 +31,6 @@ function plotVI(responsibilities, x, means, covariances, pi_k)
     nColors = size(colorArray, 1);
     compColors = colorArray(mod((1:K) - 1, nColors) + 1, :);   % K-by-3
 
-    if nargin < 5 || isempty(pi_k)
-        pi_k = ones(1, K) / K;
-    end
-    pruneTol = 0.01;
-    active = pi_k(:)' >= pruneTol;
 
     % Normalize rows in case they don't sum exactly to 1
     R = responsibilities ./ max(sum(responsibilities, 2), eps);
@@ -68,16 +63,16 @@ function plotVI(responsibilities, x, means, covariances, pi_k)
 
         ellipse = V * sqrt(D) * sqrt(chi2_95) * circle + means(:, k);
 
-        if active(k)
+        if isActive(k)
             % Active component: filled ellipse, solid outline, bold cross
             fill(ellipse(1, :), ellipse(2, :), c, 'FaceAlpha', 0.12, 'EdgeColor', 'none');
             plot(ellipse(1, :), ellipse(2, :), '-', 'Color', c, 'LineWidth', 2);
             plot(means(1, k), means(2, k), 'x', 'Color', 'k', 'MarkerSize', 14, 'LineWidth', 5);
             plot(means(1, k), means(2, k), 'x', 'Color', c,   'MarkerSize', 14, 'LineWidth', 2.5);
         else
-            % Pruned component: dashed ellipse, thin cross, no fill
-            plot(ellipse(1, :), ellipse(2, :), '--', 'Color', c, 'LineWidth', 1);
-            plot(means(1, k), means(2, k), 'x', 'Color', c, 'MarkerSize', 10, 'LineWidth', 1);
+            % % Pruned component: dashed ellipse, thin cross, no fill
+            % plot(ellipse(1, :), ellipse(2, :), '--', 'Color', c, 'LineWidth', 1);
+            % plot(means(1, k), means(2, k), 'x', 'Color', c, 'MarkerSize', 10, 'LineWidth', 1);
         end
     end
 

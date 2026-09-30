@@ -1,6 +1,6 @@
 load("x.mat");
 
-rng(11); % fixed random seed.
+rng(13); % fixed random seed.
 
 N = size(x,2);
 D = size(x,1);
@@ -156,16 +156,16 @@ prevVarLowBound= 0;
 % Conjugate prior parameters
 
 % Dirichlet
-alpha_0 = 0.01;
+alpha_0 = 0.005;
 alpha = ones(1,K)*alpha_0;
 pi_k = ones(1,K)*1/K;
 
 % Gauss-Wishart
-gw_m_0 = zeros(2,1);
+gw_m_0 = mean(x,2);
 gw_weights = cell(1,K);
 nu_0 = D;
 gw_weight_0 = eye(D,D)/nu_0;
-beta_0 = 0.01;
+beta_0 = 0.1;
 beta_k = ones(1,K)*beta_0;
 
 nu_k = ones(1,K)*nu_0;
@@ -174,10 +174,9 @@ for i=1:K
     gw_weights{1,i} = eye(D,D)/nu_0;
 end
 
-pruneTol = 1;
+pruneTol = 0.01*N;
 isCompActive = true(1,K);
 while iter<=maxIter
-
     % E step, calculate E[znk].
     for i = 1:N
         for j = 1:K
@@ -198,14 +197,21 @@ while iter<=maxIter
     % M step
     varLowBound= 0;
     for i = 1:K
-
-        N_k = sum(responsibilities(:,i));
-        if(N_k<pruneTol)
-           isCompActive(i) = false; 
-        end
         if(~isCompActive(i))
             continue;
         end
+        N_k = sum(responsibilities(:,i));
+        if(N_k<pruneTol && iter>20)
+            isCompActive(i) = false; 
+            responsibilities(:,i) = 0;
+            beta_k(i) = beta_0;
+            gw_means(:,i) = (beta_0*gw_m_0)/beta_0;
+            gw_weights{1,i} = gw_weight_0;
+            nu_k(i) = nu_0;
+            alpha(i) = alpha_0;
+            continue;
+        end
+        
         x_bar_k = zeros(2,1);
         for j = 1:N
             x_bar_k = x_bar_k + responsibilities(j,i)*x(:,j);
@@ -253,9 +259,6 @@ while iter<=maxIter
     E_ln_p_pi = gammaln(K*alpha_0) - K*gammaln(alpha_0);
     E_ln_q_pi = gammaln(sum(alpha));
     for i = 1:K
-        if(~isCompActive(i))
-            continue;
-        end
         E_ln_pi_k = psi(alpha(i))-psi(sum(alpha));
         E_ln_p_z = E_ln_p_z + sum(responsibilities(:,i))*E_ln_pi_k;
         E_ln_p_pi = E_ln_p_pi + (alpha_0-1)*E_ln_pi_k;
@@ -263,7 +266,7 @@ while iter<=maxIter
     end
     varLowBound = varLowBound + E_ln_p_z + E_ln_p_pi - E_ln_q_pi;
     
-    plotVI(responsibilities, x, means, covariances, pi_k);
+    plotVI(responsibilities, x, means, covariances, pi_k,isCompActive);
     title(sprintf('VI Iteration %d', iter));
     pause(0.1);
 
