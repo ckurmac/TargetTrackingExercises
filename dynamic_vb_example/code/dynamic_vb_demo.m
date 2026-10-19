@@ -2,10 +2,10 @@ lambda_actual = 1;
 sigma_x = 1;
 mu_x = 0.5;
 sigma_w = 1;
-rng(11);
+
 
 N_iter = 100;
-N_sample = 1000; 
+N_sample = 10000; 
 
 % generate data
 

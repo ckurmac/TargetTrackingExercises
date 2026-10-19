@@ -1,7 +1,7 @@
 lambda_actual = 1; % no way of converging to actual from a single data point.
 sigma_x = 1;
 mu_x = 0.5;
-rng(11);
+
 
 N_iter = 100;
 
