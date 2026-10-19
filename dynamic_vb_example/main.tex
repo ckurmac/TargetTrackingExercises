@@ -1,0 +1,138 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{fancyhdr}
+\usepackage{amsmath}
+\usepackage{float}
+
+
+\begin{document}
+\pagestyle{fancy}
+\fancyhead[RO]{Mehmet Çağatay Kurmaç}
+\fancyhead[LO]{Dynamic VB Example}
+
+
+\section*{1.}
+
+\textbf{E - Step}:\\
+Similar to the previous problem, our variables $x$, $w$ and $v$ are gaussian random variables. Which makes our system linear and Gaussian. In this problem, we have access to entire
+measurement dataset, thus, we will perform RTS smoothing to find the posterior distribution of the latent variables $x_i$. It is basically a reverse Kalman filter, which starts
+from the last time step and goes back to the first time step. The resulting distribution will be the joint distribution of the latent variables, given measurements and the
+parameter $\lambda$. So we will have obtained the posterior distribution of the latent variables $p(x|y,\lambda)$. Thus, E-step will be completed this way.
+
+\textbf{M - Step}:\\
+
+We will express the joint distribution of the latent variables and measurements, given the parameter $\lambda$ as follows:
+\[
+    \begin{aligned}
+        p(y_{1:N},x_{1:N}|\lambda) &= p(y_{N}|x_{1:N},y_{1:N-1},\lambda)*p(x_{1:N}|y_{1:N-1},\lambda)*p(y_{1:N-1}|\lambda)\\
+                                   &= p(y_{N}|x_{N},\lambda)*p(x_{N}|x_{N-1},\lambda)*p(x_{1:N-1}|y_{1:N-1},\lambda)*p(y_{1:N-1}|\lambda)\\
+    \end{aligned}
+\]
+
+To obtain the expression in the second line, we used the Markov property of the system. If $X_{k-1}$ is known, then $X_k$ is independent of all previous states and measurements. 
+Also, measurements are independent from each other and only depend on the current state. If we continue to expand the joint distribution, we can write the following:
+\[
+    \begin{aligned}
+        p(y_{1:N},x_{1:N}|\lambda) &= p(y_{N}|x_{N},\lambda)*p(x_{N}|x_{N-1},\lambda)*p(x_{N-1}|x_{N-2},\lambda) \cdots p(y_{1}|x_{1},\lambda)*p(x_{1}|\lambda)\\
+    \end{aligned}
+\]
+
+Then we can obtain the closed form of the joint distribution as the following: 
+
+\[
+    p(y_{1:N},x_{1:N}|\lambda) = \prod_{i=1}^{N} p(y_i|x_i,\lambda)*\prod_{i=2}^{N} p(x_i|x_{i-1},\lambda)*p(x_1|\lambda)
+\]
+
+For the M-step, we will maximize the expected log-likelihood of the joint distribution with respect to $\lambda$. The expected log-likelihood is given as follows:
+\[
+    \begin{aligned}
+        E_{p(x|y,\lambda)}\left[ ln(p(y_{1:N},x_{1:N}|\lambda)) \right] &= E_{p(x|y,\lambda)}\left[ ln(\prod_{i=1}^{N} p(y_i|x_i,\lambda)*\prod_{i=2}^{N} p(x_i|x_{i-1},\lambda)*p(x_1|\lambda)) \right] \\
+        &= E_{p(x|y,\lambda)}\left[ \sum_{i=1}^{N} ln(p(y_i|x_i,\lambda)) + \sum_{i=2}^{N} ln(p(x_i|x_{i-1},\lambda)) + ln(p(x_1|\lambda)) \right] \\
+    \end{aligned}
+\]
+
+the second sum and the third term are independent of $\lambda$, thus, we can remove them from the expectation. We can simplify our expression as follows:
+\[
+    \begin{aligned}
+            E_{p(x|y,\lambda)}\left[ ln(p(y_{1:N},x_{1:N}|\lambda)) \right] &= E_{p(x|y,\lambda)}\left[ \sum_{i=1}^{N} ln(p(y_i|x_i,\lambda)) \right] + C \\
+                                                                            &= \sum_{i=1}^{N} \left[ \frac{1}{2}ln(\lambda ) - \frac{1}{2} ln(2\pi) - \frac{\lambda}{2}E_{p(x|y,\lambda)}\left[(y_i - x_i)^2\right] \right]
+    \end{aligned}
+\]
+
+The indices of the last term is calculated in E-step with the RTS smoother. Then we can take the derivative of the expected log-likelihood with respect to $\lambda$ and set
+it to zero to find the optimal $\lambda$ as follows:
+\[
+    \begin{aligned}
+        \frac{d}{d\lambda} E_{p(x|y,\lambda)}\left[ ln(p(y_{1:N},x_{1:N}|\lambda)) \right] &= \frac{N}{2\lambda} - \frac{1}{2}\sum_{i=1}^{N}E_{p(x|y,\lambda)}\left[(y_i - x_i)^2\right] = 0 \\
+        \Rightarrow \lambda &= \frac{N}{\sum_{i=1}^{N}E_{p(x|y,\lambda)}\left[(y_i - x_i)^2\right]}
+    \end{aligned}
+\]
+\newpage
+\section*{2.}
+We did the formulation in the previous problem. Now, we can apply the framework as given before.
+Let's apply this to our problem. Distribution of $\lambda$ is given as $\lambda \sim Gam(\lambda|a,b)$ again. The factorization of the latent variable and parameters is 
+given as $p(x_{1:N},\lambda|y_{1:N}) = q_x(x_{1:N})q_\lambda(\lambda)$. As we have explained in the EM solution, $q(x_{1:N})$ is a joint distribution of the latent variables
+, given the measurements. Let's find the optimal distribution. 
+\[
+    \begin{aligned}
+        ln(q_x^*(x_{1:N}))  &= E_{\lambda}\left[ \ln p(y,x,\lambda) \right] \\
+                            &= E_{\lambda}\left[ \ln p(x_{1:N},y_{1:N}|\lambda) + \ln p(\lambda) \right] \\
+                            &= E_{\lambda}\left[ \sum_{i=1}^{N} \ln p(y_i|x_i,\lambda) + \sum_{i=2}^{N} \ln p(x_i|x_{i-1}) + p(x_{1}) + \ln p(\lambda) \right] \\
+                            &= E_{\lambda}\left[ \sum_{i=1}^{N} \ln p(y_i|x_i,\lambda) \right] + \sum_{i=2}^{N} \ln p(x_i|x_{i-1}) + p(x_{1}) + C\\
+                            &= E_{\lambda}\left[ \sum_{i=1}^{N} \frac{1}{2}ln(\lambda) - \frac{1}{2}ln(2\pi) - \frac{\lambda}{2}(y_i - x_i)^2 \right] + \sum_{i=2}^{N} \ln p(x_i|x_{i-1}) + p(x_{1}) + C\\
+                            &= \sum_{i=1}^{N} \frac{1}{2}E_{\lambda}\left[ ln(\lambda) \right] - \frac{1}{2}ln(2\pi) - \frac{1}{2}E_{\lambda}\left[ \lambda \right](y_i - x_i)^2 + \sum_{i=2}^{N} \ln p(x_i|x_{i-1}) + p(x_{1}) + C\\
+                            &= \sum_{i=1}^{N} - \frac{1}{2}\frac{a}{b}(y_i - x_i)^2 + \sum_{i=2}^{N} \ln p(x_i|x_{i-1}) + p(x_{1}) + C\\
+                            &= - \frac{1}{2}\frac{a}{b}\sum_{i=1}^{N}(y_i - x_i)^2 + \sum_{i=2}^{N} - \frac{1}{2}\ln(2\pi*\sigma_w^2) - \frac{1}{2*\sigma_w^2}(x_i - x_{i-1})^2 + p(x_{1}) + C\\
+                            &= - \frac{1}{2}\frac{a}{b}\sum_{i=1}^{N}(y_i - x_i)^2 + \sum_{i=2}^{N} - \frac{1}{2*\sigma_w^2}(x_i - x_{i-1})^2 - \frac{1}{2*\Sigma_{1}^2}(x_1 - \bar{x_{1}})^2 + C\\
+    \end{aligned}
+\]
+
+The last line is the log of product of Gaussian distributions, which are familiar.
+\[
+    \ln(q_x^*(x_{1:N})) = \sum_{i=1}^{N} \ln\mathcal{N}(y_i ; x_i, \frac{b}{a}) + \sum_{i=2}^{N} \ln\mathcal{N}(x_i ; x_{i-1}, \sigma_w^2) + \ln\mathcal{N}(x_1 ; \bar{x_1}, \Sigma_1^2) + C
+\]
+
+We know this from our first factorization of $p(x_{1:N},y_{1:N}|\lambda)$. This is the joint distribution of latent variables, given the measurements. To obtain the posterior,
+namely, optimal distribution of $q_x^*(x_{1:N})$, we can use the RTS smoother. Only difference is the variance of the measurement noise, which is $\frac{b}{a}$ instead of
+$\frac{1}{\lambda}$. (Basically the same thing but we will optimize with respect to $a$ and $b$ in the iterations.)
+
+Let's also find the optimal distribution of $\lambda$:
+
+\[
+    \begin{aligned}
+        ln(q_\lambda^*(\lambda)) &= E_{x}\left[ \ln p(y,x,\lambda) \right] \\
+                        &= E_{x}\left[ \ln p(x_{1:N},y_{1:N}|\lambda) + \ln p(\lambda) \right] \\
+                        &= E_{x}\left[ \sum_{i=1}^{N} \ln p(y_i|x_i,\lambda) + \sum_{i=2}^{N} \ln p(x_i|x_{i-1}) + p(x_{1}) + \ln p(\lambda) \right] \\
+                        &= E_{x}\left[ \sum_{i=1}^{N} \ln p(y_i|x_i,\lambda) \right] + ln(p(\lambda)) + C \\
+                        &= E_{x}\left[ \sum_{i=1}^{N} \ln \mathcal{N}(y_i;x_i,\frac{1}{\lambda}) \right] + ln(Gam(\lambda|a,b)) + C\\
+                        &= E_{x}\left[ \sum_{i=1}^{N} \frac{1}{2}ln(\lambda) - \frac{1}{2}ln(2\pi) - \frac{\lambda}{2}(y_i - x_i)^2 \right] + (a-1)ln(\lambda) - b\lambda - a ln(b) - ln(\Gamma(a)) + C\\
+                        &= \left( (a + \frac{N}{2}) - 1 \right)ln(\lambda) - \left( b + \frac{1}{2} E_{x}\left[ \sum_{i=1}^{N}(y_i - x_i)^2\right] \right)\lambda - a ln(b) - ln(\Gamma(a)) + C
+    \end{aligned}
+\]
+
+The resulting expression is similar to the natural logarithm of a Gamma distribution, which is $(a-1)ln(\lambda) - b\lambda - a ln(b) - ln(\Gamma(a))$. By comparing the coefficients
+, we can find the shape and scale parameters of optimal distribution of $\lambda$ as follows:
+\[
+    \begin{aligned}
+        a^* &= a + \frac{N}{2} \\
+        b^* &= b + \frac{1}{2} E_{x}\left[ \sum_{i=1}^{N}(y_i - x_i)^2\right] \\
+    \end{aligned}
+\]  
+
+Then the estimated $\lambda$ is basically the mean of the optimal distribution of $\lambda$, which is $\frac{a^*}{b^*}$.
+
+\section*{3.}
+
+As same as the previous problem, They are equivalent when the posterior distribution of the latent variables is equal to the optimal distribution of the latent variables.
+
+\[ 
+    q(x) = p(x|y,\lambda);
+\]
+
+Another observation is that the exact match on the prior for VB matters less when sample count N is large. Because the prior will be dominated by the likelihood, and the 
+convergence of the VB algorithm will be faster. Thus, the discrepancy between the EM and VB algorithms will be at the beginning, and smaller. 
+
+For the previous single-point observation case, we can reduce the weight of the prior by setting the shape and scale parameters of the Gamma distribution to be very small. If
+the ratio of a and b is initiated as the same as the same as the $\lambda$ in the EM algorithm, the results are exactly the same.
+
+\end{document}

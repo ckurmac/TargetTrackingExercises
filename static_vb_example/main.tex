@@ -1,0 +1,231 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{fancyhdr}
+\usepackage{amsmath}
+\usepackage{float}
+
+
+\begin{document}
+\pagestyle{fancy}
+\fancyhead[RO]{Mehmet Çağatay Kurmaç}
+\fancyhead[LO]{Static VB Example}
+
+
+\section*{1.}
+Let's begin by the intention behind EM algorithm (Will be usefull for 3rd question.)
+
+For any measurement $y$ we can write the likelihood function with respect to the parameter $\lambda$ as follows,where $x$ is the latent variable:
+\[
+\begin{aligned} 
+p(y|\lambda) &= \int p(y,x|\lambda) dx = \int p(y,x|\lambda) *\frac{p(x|y,\lambda)}{p(x|y,\lambda)} dx \\
+            &= E_{x|y,\lambda}\left[ \frac{p(y,x|\lambda)}{p(x|y,\lambda)} \right] \\
+\end{aligned}
+\]
+
+\subsubsection*{Jensen's Inequality}   
+\[
+  ln E[X] \geq E[ln X]
+\]
+
+According to Jensen's inequality, we can write the following:
+\[
+\begin{aligned}
+    ln p(y|\lambda) &= ln E_{x|y,\lambda}\left[ \frac{p(y,x|\lambda)}{p(x|y,\lambda)} \right] \\
+    &\geq E_{x|y,\lambda}\left[ ln \frac{p(y,x|\lambda)}{p(x|y,\lambda)} \right] \\
+\end{aligned}
+\]
+We denote the $E_{x|y,\lambda}\left[ ln \frac{p(y,x|\lambda)}{p(x|y,\lambda)} \right]$ as Evidence Lower Bound. We can factor it further thanks to natural logarithm.
+
+\begin{equation}
+    ln p(y|\lambda) \geq E_{x|y,\lambda}\left[ ln p(y,x|\lambda)\right] - E_{x|y,\lambda}\left[ ln p(x|y,\lambda) \right]
+\end{equation}
+
+First element is our Q function, and the second element is the entropy of the posterior distribution. Since the entropy of the posterior distribution
+does not depend on new values of $\lambda$, we will regard it as a constant later on.
+
+Our idea is to approximate the distribution of the latent variable $x$ with respect to the current value of parameters and latent variables. (E - step)
+Then, use this distribution to maximize the Q function with respect to the parameters and latent variables. (M - step)
+
+In our expectation step, we will come up with an expression for the posterior distribution $p(x|y,\lambda)$. Calculate its value with respect
+to the current value of $\lambda$. Then, in the maximization step, we will maximize the Q function featured here, with respect to parameters and 
+latent variables.
+
+For unknown parameters and systems with unobserved latent variables, This allows us to calculate the maximum likelihood estimates of the parameters iteratively,
+without needing to compute the posterior distribution of the latent variables, which is often intractable.
+
+In our problem, we can estimate the lambda with the following steps:\\
+\textbf{E - Step}:\\
+Notice that our variables $x$ and $v$ are gaussian random variables. Which makes our system linear and Gaussian. Therefore, we can use Kalman
+filter to estimate the posterior distribution of the latent variable $x$ given the measurement $y$, given the current estimate or the initial
+value of the parameter $\lambda$. 
+\[
+    \begin{aligned}
+        p(x|y,\lambda) &= \frac{p(y|x,\lambda)p(x)}{p(y|\lambda)} \\
+                    K &= \frac{\sigma_x^2}{\sigma_x^2 + \frac{1}{\lambda}}\\
+                     \mu_{x|y,\lambda} &= \bar{x} + K(y - \bar{x}) = \frac{\lambda*\sigma_x^2*y+\bar{x}}{\lambda*\sigma_x^2+1} \\
+                     \sigma_{x|y,\lambda} &= \sigma_x^2 - K\sigma_x^2 = \frac{\sigma_x^2}{\lambda*\sigma_x^2+1}
+    \end{aligned}
+\]
+
+Thus: 
+
+\[
+    p(x|y,\lambda) = \mathcal{N}\left(x;\frac{\lambda*\sigma_x^2*y+\bar{x}}{\lambda*\sigma_x^2+1}, \frac{\sigma_x^2}{\lambda*\sigma_x^2+1}\right)
+\]
+\\
+\textbf{M - Step}:\\
+
+Resulting Q function is as follows:
+\[
+\begin{aligned}
+    E_{x|y,\lambda}\left[ ln p(y,x|\lambda)\right] &= E_{y|x,\lambda}\left[ ln p(y|x,\lambda)\right] + E_{x|y,\lambda}\left[ ln p(x)\right] \\
+    p(y|x,\lambda) &= \mathcal{N}(y;x,\frac{1}{\lambda}) = \sqrt{\frac{\lambda}{2\pi}} e^{-\frac{\lambda}{2}(y-x)^2} \\
+    ln p(y|x,\lambda) &= \frac{1}{2} ln \lambda - \frac{1}{2} ln 2\pi - \frac{\lambda}{2}(y-x)^2 \\
+    E_{x|y,\lambda}\left[ ln p(y|x,\lambda)\right] &= \frac{1}{2} \ln \lambda - \frac{1}{2} \ln 2\pi - \frac{\lambda}{2} E_{x|y,\lambda}\left[ (y-x)^2 \right]
+\end{aligned}
+\]
+Regarding the terms independent of $\lambda$ as constant (Entire $p(x)$ expectation is also independent of $\lambda$), since we will take the derivative with respect to $\lambda$, we can write the following:
+\[
+\begin{aligned}
+    E_{x|y,\lambda}\left[ ln p(y,x|\lambda)\right] &= \frac{1}{2} \ln \lambda - \frac{\lambda}{2} E_{x|y,\lambda}\left[ (y-x)^2 \right] + C \\
+                                                   &= \frac{1}{2} \ln \lambda - \frac{\lambda}{2} \left( (y-\mu_{x|y,\lambda})^2 + \sigma_{x|y,\lambda}^2 \right) + C
+\end{aligned}
+\]
+Taking derivative with respect to lambda and setting it to zero, we can find the optimal value of $\lambda$:
+\[
+\begin{aligned}
+    \frac{d}{d\lambda} E_{x|y,\lambda}\left[ ln p(y,x|\lambda)\right] &= \frac{1}{2\lambda} - \frac{1}{2} \left( (y-\mu_{x|y,\lambda})^2 + \sigma_{x|y,\lambda}^2 \right) = 0 \\
+    \lambda &= \frac{1}{(y-\mu_{x|y,\lambda})^2 + \sigma_{x|y,\lambda}^2} 
+\end{aligned}
+\]
+
+Following from here, we can iteratively update the value of $\lambda$ until convergence.
+\section*{2.}
+
+Let's also begin with the formulation of the Variational Bayes framework. 
+
+\[
+    \begin{aligned}
+        p(y,x|\lambda) &= p(x|y,\lambda)*p(y|\lambda) \\
+        ln(p(y,x|\lambda)) &= ln(p(x|y,\lambda)+ ln(p(y|\lambda))) \\
+        ln(p(y|\lambda)) &= ln(p(y,x|\lambda)) - ln(p(x|y,\lambda)) \\
+    \end{aligned}
+\]
+Now, we will add and substract an arbitrary distribution $q(x)$ to the right hand side of the equation:
+\[
+    \begin{aligned}
+        ln(p(y|\lambda)) &= ln(p(y,x|\lambda)) - ln(p(x|y,\lambda)) + ln(q(x)) - ln(q(x))\\
+                         &= ln(\frac{p(y,x|\lambda)}{q(x)}) - ln(\frac{p(x|y,\lambda)}{q(x)}) \\
+    \end{aligned}
+\]
+Take the expectation of both sides with respect to $q(x)$:
+\begin{equation}
+    ln(p(y|\lambda)) = E_{q(x)}\left[ ln(\frac{p(y,x|\lambda)}{q(x)}) \right] - E_{q(x)}\left[ ln(\frac{p(x|y,\lambda)}{q(x)}) \right]
+\end{equation}
+
+The first term expresses the Evidence Lower Bound (ELBO) and the second term is the Kullback-Leibler divergence between the arbitrary distribution
+$q(x)$ and the posterior distribution $p(x|y,\lambda)$. Since KL divergence is always non-negative, we can write the following:
+\[
+    ln(p(y|\lambda)) \geq E_{q(x)}\left[ ln(\frac{p(y,x|\lambda)}{q(x)}) \right]
+\] 
+
+By maximizing the ELBO with respect to $q(x)$, we can find the best approximation of the posterior distribution $p(x|y,\lambda)$.
+If the arbitrary distribution $q(x)$ is a factorized distribution $q(x) = \prod_{i=1}^{n} q_i(x_i)$, We can formulate the ELBO as follows:
+
+\[
+    \begin{aligned}
+        \mathcal{L}(q) &= \sum_{X}\prod_{i=1}^{n} q_i(x_i) \left( \ln p(y,x|\lambda) - \sum_{i=1}^{n} \ln q_i(x_i) \right) \\
+                       &= \sum_{x_j}q_j(x_j) \left(\sum_{X_{i\neq j}}\prod_{i\neq j} q_i(x_i)*\ln p(y,x|\lambda) - \sum_{X_{i\neq j}}\prod_{i\neq j} q_i(x_i)\sum_{k\neq j} \ln q_k(x_k) \right) - \sum_{x_j}q_j(x_j)\ln q_j(x_j) \\
+    \end{aligned}
+\]
+For $k\neq i$, $\sum_{X_{i}}q_i(x_i)\ln q_k(x_k) = \ln q_k(x_k)$, since $\sum_{X_{i}}q_i(x_i) = 1$. Thus, it acts as a constant with respect to
+component $q_j(x_j)$. Also, we can express the first term as $E_{i\neq j}\left[ \ln p(y,x|\lambda) \right]$. Therefore, we can write the following:
+\[
+    \begin{aligned}
+        \mathcal{L}(q) &= \sum_{x_j}q_j(x_j) \left( E_{i\neq j}\left[ \ln p(y,x|\lambda) \right]\right) - \sum_{x_j}q_j(x_j)\ln q_j(x_j)  \\
+    \end{aligned}
+\]  
+If we denote the first term as $E_{i\neq j}\left[ \ln p(y,x|\lambda) \right] = ln(\tilde{p}(x_j))$, we can write the following:
+\[
+    \begin{aligned}
+        \mathcal{L}(q) &= \sum_{x_j}q_j(x_j) \left( ln(\tilde{p}(x_j))\right) - \sum_{x_j}q_j(x_j)\ln q_j(x_j)  \\
+                       &= -\sum_{x_j}q_j(x_j) \left( \ln(\frac{q_j(x_j)}{\tilde{p}(x_j)})\right) \\
+    \end{aligned}
+\]
+It basically became a negative KL divergence between $q_j(x_j)$ and $\tilde{p}(x_j)$. Since KL divergence is always non-negative, 
+we can maximize the ELBO by minimizing the KL divergence. KL divergence is minimized to zero when $q_j(x_j) = \tilde{p}(x_j)$. Therefore
+, we can find optimal $q_j(x_j)$ as follows:
+\[
+    q_j^*(x_j) = \tilde{p}(x_j) = exp(E_{i\neq j}\left[ \ln p(y,x|\lambda) \right])
+\]
+
+Let's apply this to our problem. Distribution of $\lambda$ is given as $\lambda \sim Gam(\lambda|a,b)$. The factorization of the latent variable and parameters is 
+given as $q(x,\lambda) = q_x(x)q_\lambda(\lambda)$. Therefore, we can write the following:
+
+\[
+    \begin{aligned}
+        ln(q_x^*(x)) &= E_{\lambda}\left[ \ln p(y,x,\lambda) \right] \\
+                     &= E_{\lambda}\left[ \ln p(y|x,\lambda) + \ln p(x) + \ln p(\lambda) \right] \\
+                        &= E_{\lambda}\left[ \ln p(y|x,\lambda) \right] + \ln p(x) + E_{\lambda}\left[ \ln p(\lambda) \right] \\
+                        &= E_{\lambda}\left[ \ln p(y|x,\lambda) \right] + \ln p(x) + C \\
+                        &= E_{\lambda}\left[ \ln \mathcal{N}(y;x,\frac{1}{\lambda}) \right] \\
+                        &= E_{\lambda}\left[ \frac{1}{2} ln \lambda - \frac{1}{2} ln 2\pi - \frac{\lambda}{2}(y-x)^2 \right] + \ln p(x) + C \\
+                        &= \frac{1}{2} E_{\lambda}\left[ ln \lambda \right] - \frac{1}{2} E_{\lambda}\left[ \lambda \right](y-x)^2 + \ln p(x) + C \\
+                        &= - \frac{a}{2b}(y-x)^2 - \frac{1}{2} ln 2\pi - \frac{(x-\bar{x})^2}{2\sigma_x^2} + C \\
+                        &= -\frac{a}{2b}(y-x)^2 - \frac{(x-\bar{x})^2}{2\sigma_x^2} \\
+                        &= -\frac{1}{2}\left( \frac{a}{b}(y-x)^2 + \frac{(x-\bar{x})^2}{\sigma_x^2} \right) \\
+                        &= -\frac{1}{2}\left( \left(\frac{a}{b} + \frac{1}{\sigma_x^2}\right)x^2 - 2\left(\frac{a}{b}y + \frac{\bar{x}}{\sigma_x^2}\right)x + \left(\frac{a}{b}y^2 + \frac{\bar{x}^2}{\sigma_x^2}\right) \right) \\
+                        &= -\frac{1}{2}\left( \left(\frac{a}{b} + \frac{1}{\sigma_x^2}\right)x^2 - 2\left(\frac{a}{b}y + \frac{\bar{x}}{\sigma_x^2}\right)x \right) + C \\
+    \end{aligned}
+\]
+
+The last expression is similar to the natural logarithm of a Gaussian distribution, which is $\frac{1}{2}ln(\lambda)-\frac{1}{2}\ln(2\pi) - \frac{\lambda}{2}(x-\mu)^2$. If we
+remove the constant terms, it becomes $- \frac{\lambda}{2}(x-\mu)^2$, which has the form $- \frac{\lambda}{2}x^2 + \lambda\mu x + C$. By comparing the coefficients, 
+we can find the mean and variance of optimal distribution of $x$ as follows:
+\[
+    \begin{aligned}
+        \sigma_x^2 &= \frac{1}{\frac{a}{b} + \frac{1}{\sigma_x^2}} \\
+                 &= \frac{b\sigma_x^2}{a\sigma_x^2 + b} \\
+        \mu_x &= \frac{\frac{a}{b}y + \frac{\bar{x}}{\sigma_x^2}}{\frac{a}{b} + \frac{1}{\sigma_x^2}} \\
+    \end{aligned}
+\]
+
+Let's also find the optimal distribution of $\lambda$:
+
+\[
+    \begin{aligned}
+        ln(q_\lambda^*(\lambda)) &= E_{x}\left[ \ln p(y,x,\lambda) \right] \\
+                     &= E_{x}\left[ \ln p(y|x,\lambda) + \ln p(x) + \ln p(\lambda) \right] \\
+                        &= E_{x}\left[ \ln p(y|x,\lambda) \right] + E_{x}\left[ \ln p(x) \right] + \ln p(\lambda) \\
+                        &= E_{x}\left[ \ln p(y|x,\lambda) \right] + C + ln(p(\lambda))\\
+                        &= E_{x}\left[ ln(\mathcal{N}(y;x,\frac{1}{\lambda}))\right] + ln(Gam(\lambda|a,b)) + C\\
+                        &= E_{x}\left[ \frac{1}{2} ln \lambda - \frac{1}{2} ln 2\pi - \frac{\lambda}{2}(y-x)^2\right] - ln(\Gamma(a)) + a ln(b) + (a-1)ln(\lambda) - b\lambda + C\\
+                        &= \frac{1}{2} ln \lambda - \frac{\lambda}{2} E_{x}\left[ (y-x)^2\right] + (a-1)ln(\lambda) - b\lambda + C\\
+                        &= \left(\frac{1}{2} + a - 1\right)ln(\lambda) - \left(b + \frac{1}{2} E_{x}\left[ (y-x)^2\right]\right)\lambda + C \\
+                        &= \left(a - \frac{1}{2}\right)ln(\lambda) - \left(b + \frac{1}{2} E_{x}\left[ (y-x)^2\right]\right)\lambda + C \\
+    \end{aligned}
+\]
+
+The resulting expression is similar to the natural logarithm of a Gamma distribution, which is $(a-1)ln(\lambda) - b\lambda - a ln(b) - ln(\Gamma(a))$. By comparing the coefficients
+, we can find the shape and scale parameters of optimal distribution of $\lambda$ as follows:
+\[
+    \begin{aligned}
+        a^* &= a + \frac{1}{2} \\
+        b^* &= b + \frac{1}{2} E_{x}\left[ (y-x)^2\right] \\
+    \end{aligned}
+\]  
+
+Then the estimated $\lambda$ is basically the mean of the optimal distribution of $\lambda$, which is $\frac{a^*}{b^*}$.
+
+\section*{3.}
+
+As we can see from equations (1) and (2) (Only numbered equations), EM and VB are equivalent, when our latent variable distribution is 
+equal to the posterior distribution of the latent variable. 
+
+\[ 
+    q(x) = p(x|y,\lambda);
+\]
+
+This makes KL divergence term zero and ELBO term exactly matches the EM algorithm's Q function + entropy of the posterior distribution.
+
+\end{document}
