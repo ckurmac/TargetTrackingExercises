@@ -3,10 +3,10 @@
 x_0 = [0;0;25;25]; % [x,y,vx,vy]
 P_0 = eye(4);
 
-process_noise_std = 1;
+
 measurement_noise_std = 1;
 
-N_iter = 1000;
+N_iter = 100000;
 time = 150;
 T = 1;
 N_step = time/T;
@@ -17,26 +17,37 @@ y_cv = zeros(2,N_step+1);
 
 C = [1,0,0,0;0,1,0,0];
 
-Qlow = 0.1^2*eye(2);
-Qhigh = 100*eye(2);
+pn_stds = [0.1,10];
+
+TPM = [0.9,0.1;0.1,0.9];
+belief0 = [0.5;0.5];
+
+Qlow = pn_stds(1)^2*eye(2);
+Qhigh = pn_stds(2)^2*eye(2);
 
 MMSE = zeros(1,N_step+1);
 kalmanMMSE = zeros(1,N_step+1);
 
 covariances = cell(1,N_step+1);
 
-isNoised = false;
+isNoised = true;
 
 for i = 1:N_iter
+    %Create a MC over time steps for correct IMM data generation.
+    model_seq = zeros(1,N_step+1);
+    model_seq(1) = find(rand<cumsum(belief0),1);
+    for j = 2:N_step+1
+        model_seq(j) = find(rand<cumsum(TPM(model_seq(j-1),:)),1);
+    end
+
     x_cv(:,1) = x_0;
     y_cv(:,1) = C * x_0 + randn(2,1)*measurement_noise_std;
     % generate random data for current iteration
     for j = 2:N_step+1
         A_j = getCVStateTransitionMtx(T);
         B_j = getCVNoiseGainMtx(T);
-        noiseTerm = B_j*randn(2,1)*process_noise_std;
         if(isNoised)
-            x_cv(:,j) = A_j*x_cv(:,j-1) + noiseTerm;
+            x_cv(:,j) = A_j*x_cv(:,j-1) +  B_j*randn(2,1)*pn_stds(model_seq(j));
         else
             x_cv(:,j) = A_j*x_cv(:,j-1);
         end
@@ -48,8 +59,6 @@ for i = 1:N_iter
 
     KF_Low_Q = CV_KF(Qlow,x_0,P_0);
     KF_High_Q = CV_KF(Qhigh,x_0,P_0);
-    TPM = [0.5,0.5;...
-        0.5,0.5];
 
     IMM = IMMFilter(x_0,P_0,{KF_Low_Q,KF_High_Q},TPM);
     [x_est(:,1),covariances{1,1},~,~,~] = IMM.update(y_cv(:,1),measurementCovariance,0);
@@ -126,8 +135,7 @@ for i = 1:N_iter
 
     KF_Low_Q = CV_KF(Qlow,x_0,P_0);
     KF_High_Q = CV_KF(Qhigh,x_0,P_0);
-    TPM = [0.5,0.5;...
-        0.5,0.5];
+
 
     IMM = IMMFilter(x_0,P_0,{KF_Low_Q,KF_High_Q},TPM);
     [x_est(:,1),covariances{1,1},~,~,~] = IMM.update(y_cv(:,1),measurementCovariance,0);
